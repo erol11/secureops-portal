@@ -1,89 +1,132 @@
 # SecureOps Portal
-### Identity & Access Management (IAM) and SOC Incident Dashboard
 
-SecureOps Portal is a hands-on cybersecurity project demonstrating secure authentication, token-based API authorization, and Role-Based Access Control (RBAC) within a Security Operations Center (SOC) incident management dashboard.
+### A Hands-On IAM and SOC Dashboard Project
 
-The application integrates **Auth0**, **React**, **Node.js**, and **Express** to simulate how SOC analysts with different permissions access and manage security incidents.
+## About the Project
 
-## Key Features
+I built SecureOps Portal to get more hands-on experience with Identity and Access Management (IAM) and understand how authentication and authorization work in a real application.
 
-- **Auth0 Authentication:** Secure login and logout using OpenID Connect (OIDC) and OAuth 2.0 Authorization Code Flow with PKCE.
-- **Multi-Factor Authentication (MFA):** One-time password verification enforced through Auth0.
-- **JWT Validation:** Express API validates Auth0-issued access tokens, including issuer and audience.
-- **Role-Based Access Control (RBAC):** Different SOC analyst roles receive different API permissions.
-- **Permission-Based UI:** The React dashboard displays available actions based on the user's access token permissions.
-- **Protected REST API:** Backend endpoints independently enforce authorization.
-- **Incident Dashboard:** Displays incident severity, status, and summary statistics.
-- **Error Handling:** Unauthorized operations return HTTP 403 Forbidden.
+The idea was to create a simple Security Operations Center (SOC) dashboard where analysts can view security incidents, but their ability to take action depends on their assigned role.
 
-## Technology Stack
+I used **Auth0** to handle authentication and user permissions, **React** for the dashboard, and **Node.js with Express** for the backend API.
 
-| Component | Technology |
+One of my main goals was to understand the difference between authenticating a user and actually authorizing them to perform an action. Rather than just hiding buttons in the frontend, I wanted the backend to enforce those permissions independently.
+
+## What I Built
+
+The application includes:
+
+- **User authentication with Auth0:** Users can log in and log out through Auth0 Universal Login.
+- **Multi-Factor Authentication (MFA):** An additional verification step using a one-time password.
+- **JWT-protected API:** The backend validates access tokens before allowing users to retrieve or update incidents.
+- **Role-Based Access Control (RBAC):** SOC analysts have different permissions depending on their roles.
+- **Incident dashboard:** A React interface displaying sample security incidents, their severity, status, and incident statistics.
+- **Permission-based actions:** Users only see the option to close incidents when their role allows it.
+- **API error handling:** Unauthorized requests are rejected, including HTTP 403 responses when a user lacks the required permission.
+
+## Technologies Used
+
+| Area | Technologies |
 |---|---|
 | Frontend | React, Vite, JavaScript, CSS |
 | Backend | Node.js, Express |
-| Identity Provider | Auth0 |
+| Identity Management | Auth0 |
 | Authentication | OAuth 2.0, OpenID Connect, PKCE, MFA |
-| Authorization | RBAC, JWT permission claims |
+| Authorization | RBAC, JWT permissions |
 | API Security | express-oauth2-jwt-bearer |
 | Version Control | Git, GitHub |
 
-## Role-Based Access Control
+## How Role-Based Access Control Works
 
-The project implements two simulated SOC analyst roles:
+For this project, I created two SOC analyst roles in Auth0.
 
-| Capability | SOC Analyst I | SOC Analyst II |
+| Permission | SOC Analyst I | SOC Analyst II |
 |---|---|---|
-| Authenticate with MFA | Yes | Yes |
+| Log in with MFA | Yes | Yes |
 | View security incidents | Yes | Yes |
 | Close security incidents | No | Yes |
-| `read:incidents` | Granted | Granted |
-| `close:incidents` | Not granted | Granted |
+| `read:incidents` | Yes | Yes |
+| `close:incidents` | No | Yes |
 
-The frontend conditionally displays the **Close** button only when the user's access token contains `close:incidents`.
+**SOC Analyst I** has read-only access. Analysts assigned this role can load and review incidents, but they cannot close them.
 
-**Security principle:** The frontend is not the authorization boundary. The Express backend independently validates JWTs and enforces permissions on protected routes.
+**SOC Analyst II** has additional permissions, allowing analysts to close incidents directly from the dashboard.
 
-## API Endpoints
+I also configured the React interface to check the permissions included in the access token. If a user doesn't have `close:incidents`, the dashboard displays **View Only** instead of a Close button.
 
-### GET /api/incidents
+However, hiding the button alone isn't enough for security. The Express API also checks the user's permissions before processing the request. This prevents someone from bypassing the frontend and closing an incident through a direct API call without authorization.
 
-Retrieves the security incidents.
+## Backend API
 
-- Requires a valid Auth0 JWT access token.
-- Requires `read:incidents`.
-- Returns HTTP 200 when authorized.
+I created two protected endpoints for working with the sample incidents.
 
-### PATCH /api/incidents/:id
+### `GET /api/incidents`
 
-Changes an incident's status to `closed`.
+Retrieves the list of security incidents.
 
-- Requires a valid Auth0 JWT access token.
-- Requires `close:incidents`.
-- Returns HTTP 200 when successful.
-- Returns HTTP 403 when permission is insufficient.
-- Returns HTTP 404 when the incident does not exist.
+The user must provide a valid Auth0 access token containing the `read:incidents` permission.
 
-Missing or invalid access tokens are rejected by the authentication middleware.
+### `PATCH /api/incidents/:id`
 
-## Security Architecture
+Updates an incident's status to `closed`.
 
-1. The user authenticates through Auth0 Universal Login.
-2. Auth0 enforces MFA and issues tokens after successful authentication.
-3. React requests an access token for the SecureOps API.
-4. React sends requests using the `Authorization: Bearer` header.
-5. Express validates the token's signature, issuer, and audience.
-6. Custom authorization middleware checks the token's permissions.
-7. The API returns incident information or performs authorized incident operations.
+This endpoint requires the `close:incidents` permission.
+
+The API returns different HTTP responses depending on the result:
+
+- **200 OK:** The request was successful.
+- **401 Unauthorized:** The request does not contain a valid access token.
+- **403 Forbidden:** The user is authenticated but doesn't have the required permission.
+- **404 Not Found:** The requested incident doesn't exist.
+
+## Authentication and Authorization Flow
+
+Here's what happens when someone uses SecureOps Portal:
+
+1. The user selects Log In and is redirected to Auth0 Universal Login.
+2. Auth0 authenticates the user and enforces MFA.
+3. After login, React requests an access token for the SecureOps API.
+4. When the user loads incidents or attempts to close one, React sends the token in the `Authorization: Bearer` header.
+5. The Express backend validates the token, including its signature, issuer, and audience.
+6. The backend checks whether the token contains the permission required for that endpoint.
+7. If the user is authorized, the API processes the request and returns the result.
+
+This helped me better understand how OAuth 2.0, OpenID Connect, JWTs, and RBAC work together.
+
+## Testing the Security Controls
+
+I tested several scenarios to make sure the application behaved as expected.
+
+**1. Accessing the API without authentication**
+
+I tested requests without a valid access token and confirmed that the protected API rejected them.
+
+**2. Trying to close incidents as SOC Analyst I**
+
+With only the `read:incidents` permission, I could retrieve the incident list but couldn't close incidents. The API returned **403 Forbidden** when I attempted an unauthorized PATCH request.
+
+**3. Closing incidents as SOC Analyst II**
+
+After assigning the higher-privilege role and logging in again, the access token included `close:incidents`.
+
+The Close buttons appeared in the dashboard, and I could successfully close incidents. The incident status and statistics updated after the API returned a successful response.
+
+**4. Checking frontend permissions**
+
+I also verified that the dashboard displayed **View Only** for SOC Analyst I and enabled Close actions for SOC Analyst II.
+
+These tests helped demonstrate the principle of least privilege: users should only have access to the actions they need for their role.
 
 ## Running the Project Locally
 
-### Prerequisites
+### Requirements
+
+You'll need:
 
 - Node.js and npm
-- An Auth0 tenant
+- An Auth0 account and tenant
 - An Auth0 Single Page Application
-- An Auth0 API configured with RBAC
+- An Auth0 API with RBAC enabled
 
 ### 1. Clone the repository
 
@@ -92,13 +135,15 @@ git clone https://github.com/erol11/secureops-portal.git
 cd secureops-portal
 ```
 
-### 2. Install frontend dependencies
+### 2. Install dependencies
+
+Install the React frontend dependencies:
 
 ```bash
 npm install
 ```
 
-### 3. Install backend dependencies
+Then install the Express backend dependencies:
 
 ```bash
 cd api
@@ -106,79 +151,74 @@ npm install
 cd ..
 ```
 
-### 4. Configure Auth0
+### 3. Set up Auth0
 
-Create an Auth0 Single Page Application and API.
+In your Auth0 tenant:
 
-Configure the API with the following permissions:
+1. Create a Single Page Application.
+2. Create an API with an identifier of your choice.
+3. Enable RBAC and **Add Permissions in the Access Token**.
+4. Create the `read:incidents` and `close:incidents` permissions.
+5. Create SOC Analyst I and SOC Analyst II roles and assign the appropriate permissions.
+6. Assign the roles to your test users.
+7. Configure MFA for your testing environment.
 
-- `read:incidents`
-- `close:incidents`
+For local development, configure the SPA's allowed callback URLs, logout URLs, and web origins to use:
 
-Enable RBAC and **Add Permissions in the Access Token**.
+`http://localhost:5173`
 
-Create two roles with the permissions shown in the RBAC table and assign them to test users.
+Update `src/main.jsx` with your Auth0 domain, SPA Client ID, and API audience.
 
-Configure your Auth0 SPA to allow `http://localhost:5173` as an application origin, callback URL, and logout URL.
+Update `api/server.js` with the corresponding Auth0 issuer and API audience.
 
-Update `src/main.jsx` with your own Auth0 domain, SPA Client ID, and API audience. Update `api/server.js` to use the same Auth0 issuer and API audience.
+### 4. Start the backend
 
-Configure an appropriate MFA policy in your Auth0 tenant.
-
-### 5. Start the backend
+From the `api` directory:
 
 ```bash
-cd api
 node server.js
 ```
 
-The API runs on `http://localhost:3001`.
+The Express API runs on:
 
-### 6. Start the frontend
+`http://localhost:3001`
 
-In a separate terminal, from the project root:
+### 5. Start the frontend
+
+Open a separate terminal in the project root and run:
 
 ```bash
 npm run dev
 ```
 
-Open `http://localhost:5173`.
+Open `http://localhost:5173` in your browser.
 
-**Note:** If Windows PowerShell blocks npm scripts, use `npm.cmd` instead of `npm`.
+If you're using Windows PowerShell and encounter an execution policy error, you can use `npm.cmd` instead of `npm`.
 
-## Demonstrated Security Scenarios
+## Current Limitations
 
-**Scenario 1 — Authentication required**
+SecureOps Portal is a learning project, not a production SOC platform.
 
-A request without a valid access token is rejected by the Express authentication middleware.
+The incidents are simulated and stored in memory, so any changes are reset when the backend restarts. The application currently runs locally, and the Auth0 and CORS configurations are set up for that environment.
 
-**Scenario 2 — Insufficient permissions**
+There is no live SIEM integration or persistent database at this stage.
 
-SOC Analyst I can retrieve incidents but cannot close them. The API rejects unauthorized PATCH requests with HTTP 403.
+## What I Learned
 
-**Scenario 3 — Authorized incident response**
+Building SecureOps Portal gave me practical experience beyond just reading about authentication and access control.
 
-SOC Analyst II can retrieve and close incidents. The dashboard updates incident status and the closed-incident counter after successful API responses.
+I worked with Auth0 Universal Login, MFA, OAuth 2.0, OpenID Connect, and JWT access tokens. I also learned how to protect Express API endpoints, assign permissions to different roles, and connect those permissions to a React interface.
 
-**Scenario 4 — Permission-aware interface**
+One of the biggest takeaways was understanding that **authentication doesn't automatically mean authorization**. A user can be successfully logged in and still be restricted from performing certain actions.
 
-Users without `close:incidents` see **View Only** rather than the Close button.
+I also gained experience troubleshooting API authorization errors, working with React state, testing HTTP responses, and using Git and GitHub to manage and publish a project.
 
-## Project Limitations
-
-This is an educational proof-of-concept, not a production SOC platform.
-
-- Incident data is stored in memory and resets when the API process restarts.
-- Auth0 and CORS configuration currently target local development.
-- The application uses simulated incidents rather than a live SIEM.
-- Production deployment, persistent storage, and operational monitoring are not implemented.
-
-## Learning Outcomes
-
-This project demonstrates practical experience with identity and access management, OAuth 2.0/OIDC authentication, MFA, JWT-based API security, least privilege, RBAC, REST APIs, and secure frontend/backend integration.
+This project gave me a better understanding of how IAM concepts can be applied in a security operations environment.
 
 ## Author
 
-Erol Rakaj
+**Erol Rakaj**
 
-Cybersecurity | Identity & Access Management | Security Operations
+M.S. Cybersecurity — Rowan University
+
+Interested in Security Operations, Identity & Access Management, and Network Security.
