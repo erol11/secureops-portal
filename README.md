@@ -12,6 +12,25 @@ I used **Auth0** to handle authentication and user permissions, **React** for th
 
 One of my main goals was to understand the difference between authenticating a user and actually authorizing them to perform an action. Rather than just hiding buttons in the frontend, I wanted the backend to enforce those permissions independently.
 
+## Dashboard Screenshots
+
+The screenshots below show how SecureOps Portal handles different levels of access based on the user's assigned Auth0 role.
+
+### SOC Analyst I — Read-Only Access
+
+SOC Analyst I can review security incidents but cannot close them. The dashboard displays **View Only** instead of the Close button.
+
+![SOC Analyst I Dashboard](screenshots/soc-analyst-I.png)
+
+### SOC Analyst II — Incident Management
+
+SOC Analyst II has additional permissions, allowing authorized users to close incidents directly from the dashboard.
+
+![SOC Analyst II Dashboard](screenshots/soc-analyst-II.png)
+
+Both roles can view incident statistics, severity levels, and incident statuses. The Express backend independently enforces authorization for protected API requests.
+
+
 ## What I Built
 
 The application includes:
